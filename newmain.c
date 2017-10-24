@@ -100,7 +100,7 @@ int analogRead(int channel){
     ADCON0bits.ADON = 1;
     while(PIR1bits.ADIF !=1){}
     int value = (int)(ADRESH)*256 + (int)(ADRESL);
-    PIR1bits.ADIF !=0;
+    PIR1bits.ADIF =0;
     ADCON0bits.ADON = 0;
     return value;
 }
