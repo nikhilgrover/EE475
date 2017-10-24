@@ -75,9 +75,55 @@
 // #pragma config statements should precede project file includes.
 // Use project enums instead of #define for ON and OFF.
 
-
-#include <xc.h>
 #define _XTAL_FREQ 20000000
+#include <xc.h>
+//#include "LCD5110.h"
+
+
+//demo's the LCD functionality.
+void Demo_LCD()
+{
+    //disable analog ports sharing pins with the LCD
+    ANSELBbits.ANSB0 = 0;
+    ANSELBbits.ANSB1 = 0;
+    ANSELBbits.ANSB2 = 0;
+    ANSELBbits.ANSB3 = 0;
+    ANSELBbits.ANSB4 = 0;
+    
+    //configure LCD to use PORTC, with pins 0,1,2,3,4 of that port
+    LCD_Config(&PORTB,0,1,2,3,4);
+    //sends initialize commands to LCD
+    LCD_Init();
+    
+    //erases all pixels from LCD
+    LCD_ClearAll();
+    
+    //number to display
+    double counter=12;
+    //holds 1 line of text
+    char buffer[14];
+    
+    //output length of buffer, after call by sprintf
+    int length;
+    while(1)
+    {
+        //convert value of counter to string (e.g. buffer = "Count = 12.20")
+        length = sprintf(buffer, "Count = %.2f", counter);
+        
+        //make the rest spaces
+        for(int i=length;i<14;i++)
+            buffer[i] = ' ';
+        
+        //set line location (row,column)
+        LCD_Goto(5,0);
+        
+        //write string
+        LCD_WriteStr(buffer, 14);
+        
+        //increment number for the demo
+        counter+=.1;
+    }
+}
 
 //example of working with digital IO pins
 void DigitalIO(){
@@ -120,6 +166,11 @@ void main(void) {
     unsigned int val = 1;
     //ANSELC = 0;
     //ANSELCbits.ANSC4 = 1;
+    
+    
+    //Demo_LCD();//enable for a looping counter shown on the LCD
+    //you must also uncomment the #include "LCD5110.h" in the includes section and add the LCD5110.h file to your project
+    
     while(1){
         if(PIR1bits.ADIF == 1){
             delay = ((int)(ADRESH)*256 + (int)(ADRESL))/1023.0;
