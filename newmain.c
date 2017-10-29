@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <xc.h>
+#include <string.h>
+#include <stdint.h>
+#include "LCD5110.h"
 // PIC18F25K22 Configuration Bit Settings
 
 // 'C' source line config statements
@@ -75,12 +78,36 @@
 // #pragma config statements should precede project file includes.
 // Use project enums instead of #define for ON and OFF.
 
-#define _XTAL_FREQ 20000000
+
 #include <xc.h>
-//#include "LCD5110.h"
+#define _XTAL_FREQ 20000000
 
-
-//demo's the LCD functionality.
+//example of working with digital IO pins
+void DigitalIO(){
+    ANSELAbits.ANSA0 = 0;  //sets RA0 as digital pin(1 for analog)
+    TRISAbits.RA0 = 0;  //sets RA0 as output
+    PORTAbits.RA0 = 0;  //sets RA0 low
+    ANSELA = 0;  //sets all RA pins as digital
+    TRISA = 0; //seta all RA pins as output
+    PORTA = 0; //sets all RA pins low
+}
+// must set ANSEL and TRIS properly manually outside of analog init
+void analogInit(){
+    ADCON1bits.PVCFG= 1;  //sets AREF high as VDD
+    ADCON1bits.NVCFG= 0;  //sets AREF low as VSS
+    ADCON2bits.ADFM=1;    //sets digital conversion as right justified  
+}
+//channel is number of analog pin, i.e. AN1 has channel number 1
+int analogRead(int channel){
+    ADCON0bits.CHS=channel;
+    ADCON0bits.ADON = 1;
+    ADCON0bits.GODONE = 1;
+    while(PIR1bits.ADIF !=1){}
+    int value = (int)(ADRESH)*256 + (int)(ADRESL);
+    PIR1bits.ADIF !=0;
+    ADCON0bits.ADON = 0;
+    return value;
+}
 void Demo_LCD()
 {
     //disable analog ports sharing pins with the LCD
@@ -124,76 +151,100 @@ void Demo_LCD()
         counter+=.1;
     }
 }
-
-//example of working with digital IO pins
-void DigitalIO(){
-    ANSELAbits.ANSA0 = 0;  //sets RA0 as digital pin(1 for analog)
-    TRISAbits.RA0 = 0;  //sets RA0 as output
-    PORTAbits.RA0 = 0;  //sets RA0 low
-    ANSELA = 0;  //sets all RA pins as digital
-    TRISA = 0; //seta all RA pins as output
-    PORTA = 0; //sets all RA pins low
-}
-// must set ANSEL and TRIS properly manually outside of analog init
-void analogInit(){
-    ADCON1bits.PVCFG= 0;  //sets AREF high as VDD
-    ADCON1bits.NVCFG= 0;  //sets AREF low as VSS
-    ADCON2bits.ADFM=1;    //sets digital conversion as right justified  
-}
-//channel is number of analog pin, i.e. AN1 has channel number 1
-int analogRead(int channel){
-    ADCON0bits.CHS=channel;
-    ADCON0bits.ADON = 1;
-    while(PIR1bits.ADIF !=1){}
-    int value = (int)(ADRESH)*256 + (int)(ADRESL);
-    PIR1bits.ADIF =0;
-    ADCON0bits.ADON = 0;
-    return value;
-}
-void main(void) {
-    printf("test/n");
-    TRISC = 0;
-    TRISA = 0;
-    TRISB = 0;
-    TRISAbits.TRISA0 = 1;
-    ANSELAbits.ANSA0 = 1;
-    ADCON0bits.CHS=0;
-    ADCON1bits.PVCFG= 0;
-    ADCON1bits.NVCFG= 0;
-    ADCON2bits.ADFM=1;
-    ADCON0bits.ADON = 1;
-    float delay = 1;
-    unsigned int val = 1;
-    //ANSELC = 0;
-    //ANSELCbits.ANSC4 = 1;
-    
-    
-    //Demo_LCD();//enable for a looping counter shown on the LCD
-    //you must also uncomment the #include "LCD5110.h" in the includes section and add the LCD5110.h file to your project
-    
+void flowrate(void){
+    ANSELC = 0x00;
+    TRISC = 0xFF;
+    TRISAbits.RA6 = 1;
+    TRISAbits.RA7 = 1;
+    ANSELA &= 0x3F;
+    ANSELCbits.ANSC2 = 0;
+    ANSELCbits.ANSC5 = 0;
+    ANSELCbits.ANSC6 = 0;
+    ANSELCbits.ANSC7 = 0;
+    ANSELBbits.ANSB0 = 0;
+    ANSELBbits.ANSB0 = 0;
+    ANSELBbits.ANSB1 = 0;
+    ANSELBbits.ANSB2 = 0;
+    ANSELBbits.ANSB3 = 0;
+    ANSELBbits.ANSB4 = 0;
+    uint8_t i = 0;
+    uint8_t i2= 0;
+    int diff = 0;
+    uint8_t porta = 0;
+    uint8_t portc = 0;
+    float freq = 0;
+   // Demo_LCD();
+    LCD_Config(&PORTB,0,1,2,3,4);
+    LCD_Init();
+    LCD_ClearAll();
+    char buff[14];
+    int length = 0;
     while(1){
-        if(PIR1bits.ADIF == 1){
-            delay = ((int)(ADRESH)*256 + (int)(ADRESL))/1023.0;
-            PIR1bits.ADIF = 0;
+        porta = PORTA;
+        portc = PORTC;
+        i =((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        __delay_us(1200);
+        porta = PORTA;
+        portc = PORTC;
+        i2=((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        if(i2<i){
+            diff = i2+255-i;
         }
         else{
-            if(ADCON0bits.GO_DONE == 0){
-                ADCON0bits.GO_DONE = 1;
-            }
+            diff = i2-i;
         }
-        val = (unsigned int)(10000*delay);
-        PORTC = 0xFF;
-        PORTA = 0xFF;
-        PORTB = 0xFF;
-        for(int i =0; i<val; i++){
-            __delay_us(1); 
+        freq = diff/241.0*10;
+        length = sprintf(buff, "%0.2f kHz", freq);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
         }
-        PORTC = 0x00;
-        PORTA = 0x00;
-        PORTB = 0x00;
-        for(int i =0; i<val; i++){
-            __delay_us(1); 
-        }
+        LCD_Goto(5,0);
+        LCD_WriteStr(buff, 14);
+        __delay_us(100000);
     }
+}
+void main(void) {
+    flowrate();
+   /* ANSELC = 0x00;
+    TRISC = 0xFF;
+    TRISAbits.RA6 = 1;
+    TRISAbits.RA7 = 1;
+    ANSELA &= 0x3F;
+    ANSELCbits.ANSC2 = 0;
+    ANSELCbits.ANSC5 = 0;
+    ANSELCbits.ANSC6 = 0;
+    ANSELCbits.ANSC7 = 0;
+    ANSELBbits.ANSB0 = 0;
+    ANSELBbits.ANSB0 = 0;
+    ANSELBbits.ANSB1 = 0;
+    ANSELBbits.ANSB2 = 0;
+    ANSELBbits.ANSB3 = 0;
+    ANSELBbits.ANSB4 = 0;
+    TRISAbits.RA0 = 1;
+    ANSELA |=0x01;
+    analogInit();
+    int voltage = 0;
+    uint8_t i = 0;
+    uint8_t i2= 0;
+    int diff = 0;
+    uint8_t porta = 0;
+    uint8_t portc = 0;
+    float freq = 0;
+   // Demo_LCD();
+    LCD_Config(&PORTB,0,1,2,3,4);
+    LCD_Init();
+    LCD_ClearAll();
+    char buff[14];
+    int length = 0;
+    while(1){
+        voltage = analogRead(0);
+        length = sprintf(buff, "value is %d", voltage);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(5,0);
+        LCD_WriteStr(buff, 14);
+        __delay_us(100000);
+    }*/
     return;
 }
