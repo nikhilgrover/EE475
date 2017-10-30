@@ -104,10 +104,21 @@ int analogRead(int channel){
     ADCON0bits.GODONE = 1;
     while(PIR1bits.ADIF !=1){}
     int value = (int)(ADRESH)*256 + (int)(ADRESL);
-    PIR1bits.ADIF !=0;
+    PIR1bits.ADIF =0;
     ADCON0bits.ADON = 0;
     return value;
 }
+int analogRead1(){
+    ADCON0bits.ADON = 1;
+    ADCON0bits.GODONE = 1;
+    while(PIR1bits.ADIF !=1){}
+    int value = (int)(ADRESH)*256 + (int)(ADRESL);
+    PIR1bits.ADIF =0;
+    ADCON0bits.ADON = 0;
+    return value;
+}
+
+
 void Demo_LCD()
 {
     //disable analog ports sharing pins with the LCD
@@ -204,8 +215,8 @@ void flowrate(void){
     }
 }
 void main(void) {
-    flowrate();
-   /* ANSELC = 0x00;
+    //flowrate();
+    ANSELC = 0x00;
     TRISC = 0xFF;
     TRISAbits.RA6 = 1;
     TRISAbits.RA7 = 1;
@@ -220,8 +231,14 @@ void main(void) {
     ANSELBbits.ANSB2 = 0;
     ANSELBbits.ANSB3 = 0;
     ANSELBbits.ANSB4 = 0;
+    TRISA |= 0x07;
+    ANSELA |=0x07;
     TRISAbits.RA0 = 1;
-    ANSELA |=0x01;
+    ANSELAbits.ANSA0 = 1;
+    TRISAbits.RA1 = 1;
+    ANSELAbits.ANSA1 = 1;
+    TRISAbits.RA5 = 1;
+    ANSELAbits.ANSA5 = 1;
     analogInit();
     int voltage = 0;
     uint8_t i = 0;
@@ -238,13 +255,62 @@ void main(void) {
     int length = 0;
     while(1){
         voltage = analogRead(0);
-        length = sprintf(buff, "value is %d", voltage);
+        length = sprintf(buff, "CO2: %0.2f ppm", voltage/1023.0*400*1.388+3.06); //1023.0*400*1.388+3.06
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(1,0);
+        LCD_WriteStr(buff, 14);
+                
+        voltage = analogRead(1);
+        length = sprintf(buff, "Sal: %0.1f ppt", voltage/1023.0*400*0.225-17.5);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(2,0);
+        LCD_WriteStr(buff, 14);
+        
+        ANSELAbits.ANSA0 = 0;
+        ANSELAbits.ANSA1 = 0;
+        voltage = analogRead(4);
+        length = sprintf(buff, "Temp: %0.1f C", (voltage/1023.0*400-15)/100*27.75);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(3,0);
+        LCD_WriteStr(buff, 14);
+        ANSELAbits.ANSA0 = 1;
+        ANSELAbits.ANSA1 = 1;
+        
+        length = sprintf(buff, "      %0.1f F", (voltage/1023.0*400-15)/100*27.75*1.8+32);//(voltage/1023.0*400-15)/100*27.75*1.8+32
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(4,0);
+        LCD_WriteStr(buff, 14);
+        
+        porta = PORTA;
+        portc = PORTC;
+        i =((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        __delay_us(1200);
+        porta = PORTA;
+        portc = PORTC;
+        i2=((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        if(i2<i){
+            diff = i2+255-i;
+        }
+        else{
+            diff = i2-i;
+        }
+        freq = diff/241.0*10;
+        length = sprintf(buff, "Flow: %0.0f L", freq*100);
         for(int j =length; j<14; j++){
             buff[j] = ' ';
         }
         LCD_Goto(5,0);
         LCD_WriteStr(buff, 14);
-        __delay_us(100000);
-    }*/
+        
+        __delay_us(50000);
+    }
     return;
 }
