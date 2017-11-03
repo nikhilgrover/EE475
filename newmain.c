@@ -319,8 +319,7 @@ void I2CMaster(){
     ANSELCbits.ANSC4 = 0;
     TRISCbits.RC3 = 1;
     TRISCbits.RC4 = 1;
-    ANSELCbits.ANSC4 = 0;
-    //TRISCbits.RC4 = 0;
+  
     SSP1CON1bits.SSPEN = 1;
     SSP1CON1bits.SSPM = 0x8;
     SSP1CON2bits.RCEN = 0;
