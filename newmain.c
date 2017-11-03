@@ -347,13 +347,15 @@ void I2CMaster(){
     PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
 }
+
+//Contains I2C Slave code for 28-pin PIC
 void main(void) {
-    //flowrate();
     ANSELCbits.ANSC3 = 0;
     ANSELCbits.ANSC4 = 0;
     TRISCbits.RC3 = 1;
     TRISCbits.RC4 = 1;
     ANSELCbits.ANSC4 = 0;
+
     //disable analog ports sharing pins with the LCD
     ANSELBbits.ANSB0 = 0;
     ANSELBbits.ANSB1 = 0;
@@ -363,6 +365,7 @@ void main(void) {
     
     //configure LCD to use PORTC, with pins 0,1,2,3,4 of that port
     LCD_Config(&PORTB,0,1,2,3,4);
+
     //sends initialize commands to LCD
     LCD_Init();
     
@@ -370,28 +373,31 @@ void main(void) {
     LCD_ClearAll();
     LCD_Goto(5,0);
         
-        //write string
-        LCD_WriteStr("testing       ", 14);
+    //write string
+    LCD_WriteStr("testing       ", 14);
     SSP1ADD =0x70;
-    //TRISCbits.RC4 = 0;
+
     SSP1CON1bits.SSPEN = 1;
     SSP1CON1bits.SSPM = 0x6;
     SSP1CON2bits.SEN = 0;
-   // SSP1CON2bits.ACKDT =0; 
+
     SSP1CON3bits.AHEN = 0;
     SSP1CON3bits.DHEN = 0;
     char buf = ' ';
+   
     while(SSP1STATbits.S == 0){
         
     }
+
     while(PIR1bits.SSPIF == 0){
         
     }
+
     PIR1bits.SSPIF = 0;
     buf = SSP1BUF;
     SSP1STATbits.BF = 0;
     
-     while(PIR1bits.SSPIF == 0){
+    while(PIR1bits.SSPIF == 0){
         
     }
     

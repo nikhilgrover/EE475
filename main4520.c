@@ -104,13 +104,8 @@ void remote(){
 
     TRISC = 0xFF;
     TRISCbits.RC3 = 1;
-    TRISCbits.RC4 = 1;
-
-
-    
-    
+    TRISCbits.RC4 = 1;    
     TRISC |= 0x07;
-
 
     int voltage = 0;
     uint8_t i = 0;
@@ -119,29 +114,22 @@ void remote(){
     uint8_t porta = 0;
     uint8_t portc = 0;
     float freq = 0;
- 
 
     return;
 }
 
 void I2CSlave(void) {
 
-
     TRISCbits.RC3 = 1;
     TRISCbits.RC4 = 1;
 
     //disable analog ports sharing pins with the LCD
 
-    
-
-    
-  
     SSPADD =0x70;
-    //TRISCbits.RC4 = 0;
+
     SSPCON1bits.SSPEN = 1;
     SSPCON1bits.SSPM = 0x6;
-    SSPCON2bits.SEN = 0;
-   // SSP1CON2bits.ACKDT =0; 
+    SSPCON2bits.SEN = 0; 
     
     
     //WE REMOVED THESE LINES FOR THE 4520!
@@ -180,12 +168,10 @@ void main(void)
     /* Initialize I/O and Peripherals for application */
     InitApp();
     
-    //ANSELDbits.ANSD2 = 1; 
-    
     TRISDbits.RD2 = 0;  //sets RA0 as output
     PORTDbits.RD2 = 0;  //sets RA0 low
 
-PORTDbits.RD2 = 0;
+    PORTDbits.RD2 = 0;
     I2CSlave();
 
     while(1)
