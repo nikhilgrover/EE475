@@ -220,6 +220,8 @@ void remote(){
     TRISC = 0xFF;
     TRISAbits.RA6 = 1;
     TRISAbits.RA7 = 1;
+    ANSELBbits.ANSB1 = 0;
+    TRISBbits.RB1 = 1;
     ANSELA &= 0x3F;
     ANSELCbits.ANSC2 = 0;
     ANSELCbits.ANSC5 = 0;
@@ -240,6 +242,9 @@ void remote(){
     TRISAbits.RA5 = 1;
     ANSELAbits.ANSA5 = 1;
     analogInit();
+    TRISCbits.RC7 = 0;
+    TRISCbits.RC6 = 0;
+    ANSELCbits.ANSC7 = 0;
     int voltage = 0;
     uint8_t i = 0;
     uint8_t i2= 0;
@@ -247,6 +252,7 @@ void remote(){
     uint8_t porta = 0;
     uint8_t portc = 0;
     float freq = 0;
+    PORTCbits.RC7 = 1;
    // Demo_LCD();
     LCD_Config(&PORTB,0,1,2,3,4);
     LCD_Init();
@@ -289,28 +295,43 @@ void remote(){
         LCD_Goto(4,0);
         LCD_WriteStr(buff, 14);
         
-        porta = PORTA;
-        portc = PORTC;
-        i =((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
-        __delay_us(1200);
-        porta = PORTA;
-        portc = PORTC;
-        i2=((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        porta = 0;
+        PORTCbits.RC6 = 0;
+        PORTCbits.RC6 = 1;
+        for( int k = 0; k<8; k++){
+            porta += (((PORTB&0x02)<<6)>>k);
+            PORTCbits.RC7 = 0;
+            __delay_us(1);
+            PORTCbits.RC7 = 1;
+        }
+        //i =((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        i=porta;
+        __delay_us(1000);
+        porta =0;
+         PORTCbits.RC6 = 0;
+        PORTCbits.RC6 = 1;
+        for( int k = 0; k<8;k++){
+            porta += (((PORTB&0x02)<<6)>>k);
+            PORTCbits.RC7 = 0;
+            __delay_us(1);
+            PORTCbits.RC7 = 1;
+        }
+        //i2=((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        i2=porta;
         if(i2<i){
             diff = i2+255-i;
         }
         else{
             diff = i2-i;
         }
-        freq = diff/241.0*10;
-        length = sprintf(buff, "Flow: %0.0f L", freq*100);
+        freq = diff/228.0*10;
+        length = sprintf(buff, "Flow: %0.2f L", freq);
         for(int j =length; j<14; j++){
             buff[j] = ' ';
         }
         LCD_Goto(5,0);
         LCD_WriteStr(buff, 14);
-        
-        __delay_us(50000);
+
     }
     return;
 }
@@ -319,7 +340,8 @@ void I2CMaster(){
     ANSELCbits.ANSC4 = 0;
     TRISCbits.RC3 = 1;
     TRISCbits.RC4 = 1;
-  
+    ANSELCbits.ANSC4 = 0;
+    //TRISCbits.RC4 = 0;
     SSP1CON1bits.SSPEN = 1;
     SSP1CON1bits.SSPM = 0x8;
     SSP1CON2bits.RCEN = 0;
@@ -346,15 +368,13 @@ void I2CMaster(){
     PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
 }
-
-//Contains I2C Slave code for 28-pin PIC
-void main(void) {
+void I2CSlave(void){
+    //flowrate();
     ANSELCbits.ANSC3 = 0;
     ANSELCbits.ANSC4 = 0;
     TRISCbits.RC3 = 1;
     TRISCbits.RC4 = 1;
     ANSELCbits.ANSC4 = 0;
-
     //disable analog ports sharing pins with the LCD
     ANSELBbits.ANSB0 = 0;
     ANSELBbits.ANSB1 = 0;
@@ -364,7 +384,6 @@ void main(void) {
     
     //configure LCD to use PORTC, with pins 0,1,2,3,4 of that port
     LCD_Config(&PORTB,0,1,2,3,4);
-
     //sends initialize commands to LCD
     LCD_Init();
     
@@ -372,31 +391,28 @@ void main(void) {
     LCD_ClearAll();
     LCD_Goto(5,0);
         
-    //write string
-    LCD_WriteStr("testing       ", 14);
+        //write string
+        LCD_WriteStr("testing       ", 14);
     SSP1ADD =0x70;
-
+    //TRISCbits.RC4 = 0;
     SSP1CON1bits.SSPEN = 1;
     SSP1CON1bits.SSPM = 0x6;
     SSP1CON2bits.SEN = 0;
-
+   // SSP1CON2bits.ACKDT =0; 
     SSP1CON3bits.AHEN = 0;
     SSP1CON3bits.DHEN = 0;
     char buf = ' ';
-   
     while(SSP1STATbits.S == 0){
         
     }
-
     while(PIR1bits.SSPIF == 0){
         
     }
-
     PIR1bits.SSPIF = 0;
     buf = SSP1BUF;
     SSP1STATbits.BF = 0;
     
-    while(PIR1bits.SSPIF == 0){
+     while(PIR1bits.SSPIF == 0){
         
     }
     
@@ -409,7 +425,94 @@ void main(void) {
         //write string
         LCD_WriteStr("It Works!     ", 14);
     }
+}
+void out(){
+    TRISAbits.RA6 = 0;
+    TRISC &= 0xF8;
+    TRISCbits.RC5 = 0;
+}
+void in(){
+    TRISAbits.RA6 = 1;
+    TRISC |= 0x07;
+    TRISCbits.RC5 = 1;
+}
+void setData(int data){
+    PORTAbits.RA6 =(data)&1;
+    PORTCbits.RC0 = (data>>1)&1;
+    PORTCbits.RC1 = (data>>2)&1;
+    PORTCbits.RC2 =(data>>3)&1;
+    PORTCbits.RC5 =(data>>4)&1;
+}
+int readData(){
+    int data = 0;
+    data+=PORTAbits.RA6;
+    data+=PORTCbits.RC0*2;
+    data+=PORTCbits.RC1*4;
+    data+=PORTCbits.RC2*8;
+    data+=PORTCbits.RC5*16;
+    return data;
+}
+void setAddr(int data){
+    for(int i =0; i<7; i++){
+        PORTAbits.RA2 = (data>>(6-i))&1;
+        PORTCbits.RC7 = 0;
+        PORTCbits.RC7 = 1;
+    }
+    PORTCbits.RC7 = 0;
+    PORTCbits.RC7 = 1;
+}
+void main(void) {
+    //flowrate();
+   // remote();
+    ANSELBbits.ANSB0 = 0;
+    ANSELBbits.ANSB1 = 0;
+    ANSELBbits.ANSB2 = 0;
+    ANSELBbits.ANSB3 = 0;
+    ANSELBbits.ANSB4 = 0;
+    ANSELCbits.ANSC7 =0;
+    TRISCbits.RC7 = 0;
+    ANSELBbits.ANSB5 = 0;
+    TRISBbits.RB5=0;
+    ANSELAbits.ANSA2 = 0;
+    TRISAbits.RA2 = 0;
+    TRISAbits.RA4 = 0;
+    ANSELC &=0xF8;
+    ANSELCbits.ANSC5 = 0;
+    LCD_Config(&PORTB,0,1,2,3,4);
+    //sends initialize commands to LCD
+    LCD_Init();
+    
+    //erases all pixels from LCD
+    LCD_ClearAll();
+    out();
+    PORTAbits.RA4 = 0;
+    PORTBbits.RB5 = 1;
+    int addr = 100;
+    setAddr(addr);
+    setData(27);
+    addr = 110;
+    setAddr(addr);
+    setData(0);
+    PORTAbits.RA4 = 1;
+    PORTBbits.RB5 = 0;
+    in();
+    setAddr(100);
+    int data = readData()*32;
+    setAddr(110);
+    data += readData();
+    int length = 0;
+    char buff[14];
+    length = sprintf(buff, "Data: %d", data);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(5,0);
+        LCD_WriteStr(buff, 14);
+    
+    
     while(1){
+        PORTCbits.RC7 = 0;
+        PORTCbits.RC7 = 1;
     }
     return;
 }
