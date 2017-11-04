@@ -10,6 +10,7 @@
 #include <xc.h>
 #include <string.h>
 #include <stdint.h>
+#include <I2C.h>
 #include "LCD5110.h"
 // PIC18F25K22 Configuration Bit Settings
 
@@ -81,6 +82,11 @@
 
 #include <xc.h>
 #define _XTAL_FREQ 20000000
+
+int CO2 = 0;
+int salinity = 0;
+int flow = 0;
+int temp = 0;
 
 //example of working with digital IO pins
 void DigitalIO(){
@@ -214,6 +220,89 @@ void flowrate(void){
         __delay_us(100000);
     }
 }
+void scanSensors(){
+    char buff[14];
+    int length = 0;
+    uint8_t i = 0;
+    uint8_t i2= 0;
+    int diff = 0;
+    uint8_t porta = 0;
+    float freq = 0;
+    while(1){
+        CO2 = analogRead(0);
+        length = sprintf(buff, "CO2: %0.2f ppm", CO2/1023.0*400*1.388+3.06); //1023.0*400*1.388+3.06
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(1,0);
+        LCD_WriteStr(buff, 14);
+                
+        salinity = analogRead(1);
+        length = sprintf(buff, "Sal: %0.1f ppt", salinity/1023.0*400*0.225-17.5);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(2,0);
+        LCD_WriteStr(buff, 14);
+        
+        ANSELAbits.ANSA0 = 0;
+        ANSELAbits.ANSA1 = 0;
+        temp = analogRead(4);
+        length = sprintf(buff, "Temp: %0.1f C", (temp/1023.0*400-15)/100*27.75+4);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(3,0);
+        LCD_WriteStr(buff, 14);
+        ANSELAbits.ANSA0 = 1;
+        ANSELAbits.ANSA1 = 1;
+        
+        length = sprintf(buff, "      %0.1f F", ((temp/1023.0*400-15)/100*27.75+4)*1.8+32);//(voltage/1023.0*400-15)/100*27.75*1.8+32
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(4,0);
+        LCD_WriteStr(buff, 14);
+        
+        porta = 0;
+        PORTCbits.RC6 = 0;
+        PORTCbits.RC6 = 1;
+        for( int k = 0; k<8; k++){
+            porta += (((PORTB&0x02)<<6)>>k);
+            PORTCbits.RC7 = 0;
+            __delay_us(1);
+            PORTCbits.RC7 = 1;
+        }
+        //i =((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        i=porta;
+        __delay_us(1000);
+        porta =0;
+         PORTCbits.RC6 = 0;
+        PORTCbits.RC6 = 1;
+        for( int k = 0; k<8;k++){
+            porta += (((PORTB&0x02)<<6)>>k);
+            PORTCbits.RC7 = 0;
+            __delay_us(1);
+            PORTCbits.RC7 = 1;
+        }
+        //i2=((porta&0x80)>>7) + ((porta&0x40)>>5)+((portc&0x07)<<2)+(portc&0xE0);
+        i2=porta;
+        if(i2<i){
+            flow = i2+255-i;
+        }
+        else{
+            flow = i2-i;
+        }
+        freq = flow/228.0*10;
+        length = sprintf(buff, "Flow: %0.2f L", freq);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(5,0);
+        LCD_WriteStr(buff, 14);
+
+    }
+}
 void remote(){
      //flowrate();
     ANSELC = 0x00;
@@ -250,7 +339,6 @@ void remote(){
     uint8_t i2= 0;
     int diff = 0;
     uint8_t porta = 0;
-    uint8_t portc = 0;
     float freq = 0;
     PORTCbits.RC7 = 1;
    // Demo_LCD();
@@ -336,6 +424,7 @@ void remote(){
     return;
 }
 void I2CMaster(){
+    int ack = 0;
     ANSELCbits.ANSC3 = 0;
     ANSELCbits.ANSC4 = 0;
     TRISCbits.RC3 = 1;
@@ -347,17 +436,14 @@ void I2CMaster(){
     SSP1CON2bits.RCEN = 0;
     SSP1CON2bits.SEN = 1;
     while(PIR1bits.SSPIF == 0){
-        
     }
     PIR1bits.SSPIF = 0;
     SSP1BUF = 0x70;
-    while(SSP1CON2bits.ACKSTAT ==1){
-        
-    }
     while(PIR1bits.SSPIF == 0){
         
     }
     PIR1bits.SSP1IF = 0;
+    
     SSP1BUF = 0xAA;
     while(SSP1CON2bits.ACKSTAT ==1){
         
@@ -367,6 +453,21 @@ void I2CMaster(){
     }
     PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
+}
+void I2CSlaveInit(){
+    ANSELCbits.ANSC3 = 0;
+    ANSELCbits.ANSC4 = 0;
+    TRISCbits.RC3 = 1;
+    TRISCbits.RC4 = 1;
+    ANSELCbits.ANSC4 = 0;
+    SSP1CON1bits.SSPEN = 1;
+    SSP1CON1bits.SSPM = 0x6;
+    SSP1CON2bits.SEN = 0;
+   // SSP1CON2bits.ACKDT =0; 
+    SSP1CON3bits.AHEN = 0;
+    SSP1CON3bits.DHEN = 0;
+    SSP1STATbits.SMP = 1;
+    
 }
 void I2CSlave(void){
     //flowrate();
@@ -401,9 +502,10 @@ void I2CSlave(void){
    // SSP1CON2bits.ACKDT =0; 
     SSP1CON3bits.AHEN = 0;
     SSP1CON3bits.DHEN = 0;
+    int loop = 1;
     char buf = ' ';
+    int count=0;
     while(SSP1STATbits.S == 0){
-        
     }
     while(PIR1bits.SSPIF == 0){
         
@@ -426,16 +528,22 @@ void I2CSlave(void){
         LCD_WriteStr("It Works!     ", 14);
     }
 }
+
+//sets pins connected to SRAM data as output
 void out(){
     TRISAbits.RA6 = 0;
     TRISC &= 0xF8;
     TRISCbits.RC5 = 0;
 }
+
+//sets pins connected to SRAM data as input
 void in(){
     TRISAbits.RA6 = 1;
     TRISC |= 0x07;
     TRISCbits.RC5 = 1;
 }
+
+//writes data to SRAM data lines
 void setData(int data){
     PORTAbits.RA6 =(data)&1;
     PORTCbits.RC0 = (data>>1)&1;
@@ -443,6 +551,8 @@ void setData(int data){
     PORTCbits.RC2 =(data>>3)&1;
     PORTCbits.RC5 =(data>>4)&1;
 }
+
+//reads data from SRAM data lines
 int readData(){
     int data = 0;
     data+=PORTAbits.RA6;
@@ -452,6 +562,8 @@ int readData(){
     data+=PORTCbits.RC5*16;
     return data;
 }
+
+//sets SRAM address lines
 void setAddr(int data){
     for(int i =0; i<7; i++){
         PORTAbits.RA2 = (data>>(6-i))&1;
@@ -461,16 +573,38 @@ void setAddr(int data){
     PORTCbits.RC7 = 0;
     PORTCbits.RC7 = 1;
 }
-void main(void) {
-    //flowrate();
-   // remote();
+
+//initialization of GPIO pins for remote system
+void remoteInit(){
+    ANSELC = 0x00;
+    TRISC = 0xFF;
+    TRISAbits.RA6 = 1;
+    TRISAbits.RA7 = 1;
+    ANSELBbits.ANSB1 = 0;
+    TRISBbits.RB1 = 1;
+    ANSELA &= 0x3F;
+    ANSELCbits.ANSC2 = 0;
+    ANSELCbits.ANSC5 = 0;
+    ANSELCbits.ANSC6 = 0;
+    ANSELCbits.ANSC7 = 0;
+    ANSELBbits.ANSB0 = 0;
     ANSELBbits.ANSB0 = 0;
     ANSELBbits.ANSB1 = 0;
     ANSELBbits.ANSB2 = 0;
     ANSELBbits.ANSB3 = 0;
     ANSELBbits.ANSB4 = 0;
-    ANSELCbits.ANSC7 =0;
+    TRISA |= 0x07;
+    ANSELA |=0x07;
+    TRISAbits.RA0 = 1;
+    ANSELAbits.ANSA0 = 1;
+    TRISAbits.RA1 = 1;
+    ANSELAbits.ANSA1 = 1;
+    TRISAbits.RA5 = 1;
+    ANSELAbits.ANSA5 = 1;
+    analogInit();
     TRISCbits.RC7 = 0;
+    TRISCbits.RC6 = 0;
+    ANSELCbits.ANSC7 = 0;
     ANSELBbits.ANSB5 = 0;
     TRISBbits.RB5=0;
     ANSELAbits.ANSA2 = 0;
@@ -478,27 +612,134 @@ void main(void) {
     TRISAbits.RA4 = 0;
     ANSELC &=0xF8;
     ANSELCbits.ANSC5 = 0;
+    ANSELCbits.ANSC3 = 0;
+    ANSELCbits.ANSC4 = 0;
+    TRISCbits.RC3 = 1;
+    TRISCbits.RC4 = 1;
+    ANSELCbits.ANSC4 = 0;
     LCD_Config(&PORTB,0,1,2,3,4);
-    //sends initialize commands to LCD
     LCD_Init();
     
     //erases all pixels from LCD
     LCD_ClearAll();
-    out();
+}
+
+// enables writing to SRAM
+void writeEnable(){
     PORTAbits.RA4 = 0;
     PORTBbits.RB5 = 1;
-    int addr = 100;
-    setAddr(addr);
-    setData(27);
-    addr = 110;
-    setAddr(addr);
-    setData(0);
+}
+
+// enables reading from SRAM
+void readEnable(){
     PORTAbits.RA4 = 1;
     PORTBbits.RB5 = 0;
+}
+
+// disables both read and write from SRAM
+void disable(){
+    PORTAbits.RA4 = 1;
+    PORTBbits.RB5 = 1;
+}
+
+//writes data to addr of SRAM
+void SRAMWrite(int addr, int data){
+    setAddr(addr);
+    writeEnable();
+    setData(data);
+    disable();
+}
+
+//writes all sensor data to SRAM
+void allWrite(int addr){
+    int current = addr;
+    int data[8];
+    data[0] = CO2/32;
+    data[1] = CO2%32;
+    data[2]=salinity/32;
+    data[3]=salinity%32;
+    data[4]=flow/32;
+    data[5]=flow%32;
+    data[6]=temp/32;
+    data[7]=temp%32;
+    for(int i =0; i<8; i++){
+        SRAMWrite(current, data[i]);
+        current++;
+        if(current>=128){
+            current-=128;
+        }
+    }
+}
+
+void main(void) {
+    //flowrate();
+   // I2CSlave();
+    //I2CMaster();
+    
+    remoteInit();
+    disable();
+    out();
+     SSP1ADD =0x70;
+    I2CSlaveInit();
+    int scan = 1;
+    int addr = 0;
+    int count = 0;
+    int buf;
+    while(1);
+    /*
+  while(1){
+        if(scan){
+            scanSensors();
+            allWrite(addr);
+            addr+=8;
+            if(addr>=128){
+                addr-=128;
+            }
+            count = 0;
+            if(PIR1bits.SSPIF == 1){
+                PIR1bits.SSPIF = 0;
+                buf = SSP1BUF;
+                SSP1STATbits.BF = 0;
+                SSP1CON2bits.ACKDT = 0;
+                SSP1CON1bits.CKP == 1;
+
+                 while(PIR1bits.SSPIF == 0){
+
+                }
+
+                PIR1bits.SSPIF = 0;
+                buf = SSP1BUF;
+                SSP1STATbits.BF = 0;
+                if(buf == 0xAA){
+                    //scan = 0;
+                    LCD_Goto(5,0);
+
+                    //write string
+                    LCD_WriteStr("It Works!     ", 14);
+                }
+            }
+            
+        }
+    }
+    int addr = 100;
+    setAddr(addr);
+    writeEnable();
+    setData(27);
+    disable();
+    addr = 110;
+    setAddr(addr);
+    writeEnable();
+    setData(0);
+    disable();
+    setAddr(0);
+    writeEnable();
+    setData(1);
+    disable();
     in();
-    setAddr(100);
+    readEnable();
+    setAddr(0);
     int data = readData()*32;
-    setAddr(110);
+    setAddr(100);
     data += readData();
     int length = 0;
     char buff[14];
@@ -507,12 +748,7 @@ void main(void) {
             buff[j] = ' ';
         }
         LCD_Goto(5,0);
-        LCD_WriteStr(buff, 14);
+        LCD_WriteStr(buff, 14);*/
     
-    
-    while(1){
-        PORTCbits.RC7 = 0;
-        PORTCbits.RC7 = 1;
-    }
     return;
 }
