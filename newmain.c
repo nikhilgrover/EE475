@@ -10,7 +10,7 @@
 #include <xc.h>
 #include <string.h>
 #include <stdint.h>
-#include <I2C.h>
+#define _XTAL_FREQ 20000000
 #include "LCD5110.h"
 // PIC18F25K22 Configuration Bit Settings
 
@@ -81,7 +81,7 @@
 
 
 #include <xc.h>
-#define _XTAL_FREQ 20000000
+
 
 int CO2 = 0;
 int salinity = 0;
@@ -445,13 +445,9 @@ void I2CMaster(){
     PIR1bits.SSP1IF = 0;
     
     SSP1BUF = 0xAA;
-    while(SSP1CON2bits.ACKSTAT ==1){
+    while(SSP1STATbits.BF == 1){
         
     }
-     while(PIR1bits.SSPIF == 0){
-        
-    }
-    PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
 }
 void I2CSlaveInit(){
@@ -673,9 +669,10 @@ void allWrite(int addr){
 
 void main(void) {
     //flowrate();
-   // I2CSlave();
+    //I2CSlave();
     //I2CMaster();
-    
+    //while(1)
+    //{ }
     remoteInit();
     disable();
     out();
@@ -685,7 +682,11 @@ void main(void) {
     int addr = 0;
     int count = 0;
     int buf;
-    while(1);
+    while(1)
+    {
+        char c = SSP1BUF;
+        //SSP1CON2bits.ACKDT = 0;
+    }
     /*
   while(1){
         if(scan){
@@ -702,18 +703,14 @@ void main(void) {
                 SSP1STATbits.BF = 0;
                 SSP1CON2bits.ACKDT = 0;
                 SSP1CON1bits.CKP == 1;
-
                  while(PIR1bits.SSPIF == 0){
-
                 }
-
                 PIR1bits.SSPIF = 0;
                 buf = SSP1BUF;
                 SSP1STATbits.BF = 0;
                 if(buf == 0xAA){
                     //scan = 0;
                     LCD_Goto(5,0);
-
                     //write string
                     LCD_WriteStr("It Works!     ", 14);
                 }
@@ -749,6 +746,4 @@ void main(void) {
         }
         LCD_Goto(5,0);
         LCD_WriteStr(buff, 14);*/
-    
-    return;
 }
