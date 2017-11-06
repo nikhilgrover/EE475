@@ -1,22 +1,22 @@
 /*
- * File:   local.c
- * Author: Aotian
+ * File:   newmain.c
+ * Author: Schuyler Horky
  *
- * Created on November 5, 2017, 1:28 PM
+ * Created on October 23, 2017, 1:14 PM
  */
+
+//#define TEST_UART
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <xc.h>
-#include <string.h>
-#include <stdint.h>
-#include "LCD5110.h"
+#define _XTAL_FREQ 80000000
 // PIC18F25K22 Configuration Bit Settings
 
 // 'C' source line config statements
 
 // CONFIG1H
-//#pragma config FOSC = INTIO67   // Oscillator Selection bits (Internal oscillator block)
-#pragma config FOSC = XT
+#pragma config FOSC = XT   // Oscillator Selection bits (Internal oscillator block)
 #pragma config PLLCFG = OFF     // 4X PLL Enable (Oscillator used directly)
 #pragma config PRICLKEN = ON    // Primary clock enable bit (Primary clock enabled)
 #pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor disabled)
@@ -74,40 +74,13 @@
 
 // CONFIG7H
 #pragma config EBTRB = OFF      // Boot Block Table Read Protection bit (Boot Block (000000-0007FFh) not protected from table reads executed in other blocks)
-void I2CMaster(){
-    SSP1ADD =0x0F;
-    int ack = 0;
-    ANSELCbits.ANSC3 = 0;
-    ANSELCbits.ANSC4 = 0;
-    TRISCbits.RC3 = 1;
-    TRISCbits.RC4 = 1;
-    ANSELCbits.ANSC4 = 0;
-    //TRISCbits.RC4 = 0;
-    SSP1CON1bits.SSPEN = 1;
-    SSP1CON1bits.SSPM = 0x8;
-    SSP1CON2bits.RCEN = 0;
-    SSP1CON2bits.SEN = 1;
-    while(PIR1bits.SSPIF == 0){
-    }
-    PIR1bits.SSPIF = 0;
-    SSP1BUF = 0x70;
-    while(PIR1bits.SSPIF == 0){
-        
-    }
-    PIR1bits.SSP1IF = 0;
-    __delay_us(100);
-    SSP1BUF = 0xAA;
-    if(SSP1CON2bits.ACKSTAT ==0){
-        
-    }
-    while(PIR1bits.SSPIF == 0){
-        
-    }
-    PIR1bits.SSPIF = 0;
-    SSP1CON2bits.PEN = 1;
-    
-}
-void I2Cinit(){
+
+#include <stdint.h>
+#include "UART.h"
+
+
+void I2Cinit()
+{
     SSP1ADD =0x0F;
     ANSELCbits.ANSC3 = 0;
     ANSELCbits.ANSC4 = 0;
@@ -118,15 +91,18 @@ void I2Cinit(){
     SSP1CON1bits.SSPEN = 1;
     SSP1CON1bits.SSPM = 0x8;
     SSP1CON2bits.RCEN = 0;
-    SSP1CON2bits.SEN = 1;
+    //SSP1CON2bits.SEN = 1;
 }
-int readI2C(int addr){
-    int ack = 0;
+
+signed int readI2C(int addr)
+{
+    SSP1CON2bits.SEN = 1;
+    int fail = 0;
     int buf = 0;
     while(PIR1bits.SSPIF == 0){
     }
     PIR1bits.SSPIF = 0;
-    SSP1BUF = addr+1;
+    SSP1BUF = addr|0x01;
     while(PIR1bits.SSPIF == 0){
         
     }
@@ -135,6 +111,11 @@ int readI2C(int addr){
     while(PIR1bits.SSPIF == 0){
         
     }
+    if(SSP1CON2bits.ACKSTAT == 0)
+    {
+        fail = 0;
+    }
+    
     buf = SSP1BUF;
     while(SSP1STATbits.BF == 1){
         
@@ -143,41 +124,322 @@ int readI2C(int addr){
     SSP1CON2bits.ACKEN = 1;
     PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
+    while(PIR1bits.SSPIF == 0){}
+    
+    //clears interrupt flag
+    PIR1bits.SSP1IF = 0;
+    
     SSP1CON1bits.SSPEN = 0;
     SSP1CON1bits.SSPEN = 1;
     __delay_us(50);
+    if(fail)
+        return -1;
     return buf;
-    
 }
-void writeI2C(int addr){
-    int ack = 0;
-    while(PIR1bits.SSPIF == 0){
-    }
+
+uint8_t writeI2C(int addr, char data)
+{
+    //start enable
+    SSP1CON2bits.SEN = 1;
+    uint8_t fail = 1;
+    
+    //start enable properly. Waits for enable
+    while(PIR1bits.SSPIF == 0){ }
+    
+    //clears interrupt flag
     PIR1bits.SSPIF = 0;
-    SSP1BUF = addr;
-    while(PIR1bits.SSPIF == 0){
-        
-    }
+    
+    //sets first byte (address))
+    SSP1BUF = 0x70;//addr;
+    //waits for first byte transmission
+    while(PIR1bits.SSPIF == 0){ }
+    
+    //clears interrupt flag
     PIR1bits.SSP1IF = 0;
-    __delay_us(100);
-    SSP1BUF = 0xAA;
-    if(SSP1CON2bits.ACKSTAT ==0){
-        
+    __delay_us(1);
+    SSP1BUF = data;
+    
+    while(PIR1bits.SSPIF == 0){}
+    
+    if(SSP1CON2bits.ACKSTAT ==0)
+    {
+        fail = 0;
     }
-    while(PIR1bits.SSPIF == 0){
-        
-    }
+  
     PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
+    
+    while(PIR1bits.SSPIF == 0){}
+    
+    //clears interrupt flag
+    PIR1bits.SSP1IF = 0;
+    return fail;
 }
-void main(void) {
-   // I2CMaster();
-    readI2C();
-     SSP1CON1bits.SSPEN = 0;
-      SSP1CON1bits.SSPEN = 1;
-      __delay_us(50);
-     readI2C();
-    while(1){
+
+struct packet
+{
+    uint32_t Temperature;
+    uint32_t CO2;
+    uint32_t Salinity;
+    uint32_t FlowRate;
+};
+
+void SendPacket(struct packet* data)
+{   
+    char* buffer = data;
+    for (int i = 0; i < sizeof(struct packet); i++)
+		UART_WriteByte(buffer[i]);
+}
+
+enum State
+{
+    idle=1,
+    initScan,
+    termScan,
+    read1x,
+    read16x
+};
+
+char sensorBaseAddr = 0x70;
+char sensorAddressNibble;
+char cmdIDNibble;
+
+enum State CurrentState;
+enum State NextState;
+struct packet testPacket;
+
+void StartScan(char addr)
+{   
+   
+    //I2C 
+    //send start scan command and wait for ACK
+    while(writeI2C(addr,0x03))
+    {
+        __delay_ms(10);
+    }
+    NextState = idle;
+}
+
+void EndScan(char addr)
+{
+    PORTB |= 1;
+    //send end scan command and wait for ACK
+    while(writeI2C(addr,0x04))
+    {
+        __delay_ms(10);    
+    }
+    
+    PORTB &= ~1;
+    
+    NextState = idle;
+}
+
+void ConvertRawToMeas(struct packet* msg, char data[], int index)
+{
+    int32_t Temp = data[index] | (data[index+1]<<8);
+    int32_t CO2 = data[index+2] | (data[index+3]<<8);
+    int32_t Salinity = data[index+4] | (data[index+5]<<8);   
+    int32_t FlowRate = data[index+6] | (data[index+7]<<8);
+    
+    msg->Temperature = ((Temp/1023.0*400-15)/100*27.75+4)*100.0;
+    msg->CO2 = (CO2/1023.0*400*1.388+3.06)*100.0;
+    msg->Salinity = (Salinity/1023.0*400*0.225-17.5)*100.0;
+    msg->FlowRate = (FlowRate/228.0*10)*100*100.0;
+}
+
+void Read1x(char addr)
+{
+    PORTB |= 1;
+    #ifdef TEST_UART
+    struct packet p1;
+    p1.Temperature = 101;
+    p1.CO2 = 201;
+    p1.Salinity = 301;
+    p1.FlowRate = 401;
+
+    SendPacket(&p1);
+ 
+    NextState = idle;
+    return;
+    #endif
+    //I2C command to 
+    //request data from sensor (addr) for 1 reading
+   
+    char buffer[8];
+
+    //send Readx1 command and wait for ack
+    writeI2C(addr,0x01);
+    
+    __delay_ms(300);
+    for(int i=0;i<8;i++)
+    {
+        signed int data;
+        data = readI2C(addr);//read data from remote sys    
+        buffer[i] = (char)data;
+    } 
+    PORTB &= ~1;
+    struct packet p;
+    ConvertRawToMeas(&p, buffer,0);
+    //p.Temperature = 100;
+    //p.CO2 = 200;
+    //p.Salinity = 300;
+    //p.FlowRate = 400;
+    //send reading to UART
+    SendPacket(&p);
+    NextState = idle;
+
+}
+
+void Read16x(char addr)
+{
+    //I2C command(s) to request data from sensor (addr) for 16 readings
+    char buffer[128];
+
+    PORTB |= 1;
+    //send Readx16 command and wait for ack
+    writeI2C(addr,0x02);
+    PORTB &= ~1;
+    __delay_ms(500);
+    //for(int i=0;i<8;i++)
+    //{
+    //    signed int data;
+    //    data = readI2C(addr);//read data from remote sys    
+    //    buffer[i] = (char)data;
+    //    __delay_ms(500);
+    //}
+
+    struct packet p;
+    p.Temperature = 100;
+    p.CO2 = 200;
+    p.Salinity = 300;
+    p.FlowRate = 400;
+    
+    //SendPacket(&p);
+    for(int i=0;i<16;i++)
+    {
+        SendPacket(&p);
+    }
+    NextState = idle;
+}
+
+void Idle()
+{
+    //if there's no bytes to read, don't read
+    if(UART_BytesToRead()==0)
+    {
+        NextState = idle;
+        #ifdef TEST_UART_BASIC
+        PORTB |= 1;
+        __delay_ms(5);
+        PORTB &= ~1;
+        __delay_ms(5);
         
+        return;
+        #endif
+    }
+    signed int cmd = UART_ReadByte(); 
+
+    if(cmd==-1)//no command from PC
+    {
+        NextState = idle;
+        return;
+    }
+    #ifdef TEST_UART_BASIC
+    if(cmd == 65)
+    {
+        PORTB |= 1;
+        __delay_ms(100);
+        PORTB &= ~1;
+        SendPacket(&testPacket);
+        NextState = idle;
+        return;
+    }    
+    NextState = idle;
+    return;
+    #endif
+
+    sensorAddressNibble = (cmd & 0x0f)<<1;
+    cmdIDNibble = cmd >> 4;
+    
+    switch(cmdIDNibble) 
+    {
+        case 0b0000://initiate scan
+            NextState = initScan;//StartScan(sensorAddressNibble);
+            break;
+        case 0b0001://terminate scan
+            NextState = termScan;
+            break;
+        case 0b0010://read 1x
+            NextState = read1x;
+            break;
+        case 0b0011://read 16x
+            NextState = read16x;
+            break;
+        case 0b0100://ping cmd. For debugging
+            UART_WriteByte(0xa5);
+            NextState = idle;
+            break;
+        default:
+            NextState = idle;
+            break;
+    }   
+}
+
+void LocalSystemStateMachine()
+{
+    switch(CurrentState)
+    {
+        case idle:
+            Idle();
+            break;
+        case initScan:
+            StartScan(sensorBaseAddr | sensorAddressNibble);
+            break;
+        case termScan:
+            EndScan(sensorBaseAddr | sensorAddressNibble);
+            break;
+        case read1x:
+            Read1x(sensorBaseAddr | sensorAddressNibble);
+            break;
+        case read16x:
+            Read16x(sensorBaseAddr | sensorAddressNibble);
+            break;
+    }
+
+    CurrentState = NextState;
+}
+
+void main(void) 
+{
+    testPacket.Temperature = 0;
+    testPacket.CO2 = 100;
+    testPacket.Salinity = 200;
+    testPacket.FlowRate = 300;
+            
+    TRISAbits.RA0 = 0;  //sets RA0 as output
+    PORTAbits.RA0 = 0;  //sets RA0 low
+    ANSELAbits.ANSA0 = 1;  //sets RA0 as analog input
+    
+    PORTBbits.RB0 = 0;
+    ANSELBbits.ANSB0 = 0;
+    TRISBbits.RB0 = 0;
+   
+    TRISAbits.TRISA0 = 1;
+    ANSELAbits.ANSA0 = 1;
+    ADCON0bits.CHS=0;
+    ADCON1bits.PVCFG= 0;
+    ADCON1bits.NVCFG= 0;
+    ADCON2bits.ADFM=1;
+    ADCON0bits.ADON = 1;
+
+    PORTB &= ~1;
+    I2Cinit();
+    UART_Config();
+
+    CurrentState = idle;
+
+    while(1)
+    {
+        LocalSystemStateMachine();
     }
 }
