@@ -9,7 +9,7 @@ struct packet
 	float FlowRate;
 };
 
-uint32_t ConvertToUInt32(char bytes[], char index);
+float ConvertToUInt32(char bytes[], char index);
 struct packet ParsePacket(char bytes[]);
 
 //example of what a packet will look like from the local system. 
@@ -32,10 +32,23 @@ int main()
 	return 0;
 }
 */
-uint32_t ConvertToUInt32(char bytes[], char index)
+float ConvertToUInt32(char bytes[], char index)
 {
-	return bytes[index] | (bytes[index + 1] << 8) | (bytes[index + 2] << 16) | (bytes[index + 3] << 24);
+	float value = (float)(bytes[index] | (bytes[index + 1] << 8) | (bytes[index + 2] << 16) | (bytes[index + 3] << 24));
+	return value / 100;
 }
+
+struct packet ParsePacket(char bytes[])
+{
+	struct packet p;
+	p.Temperature = (float)ConvertToUInt32(bytes, 0);
+	p.CO2 = (float)ConvertToUInt32(bytes, 4);
+	p.Salinity = (float)ConvertToUInt32(bytes, 8);
+	p.FlowRate = (float)ConvertToUInt32(bytes, 12);
+
+	return p;
+}
+
 
 struct packet ParsePacket(char bytes[])
 {
