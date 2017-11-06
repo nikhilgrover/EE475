@@ -104,19 +104,12 @@ void I2CSlaveInit(){
     TRISCbits.RC4 = 1;
     ANSELCbits.ANSC4 = 0;
     SSP1CON1bits.SSPEN = 1;
-    SSP1CON1bits.SSPM = 0xE;
+    SSP1CON1bits.SSPM = 0x6;
     SSP1CON2bits.SEN = 0;
    // SSP1CON2bits.ACKDT =0; 
     SSP1CON3bits.AHEN = 0;
     SSP1CON3bits.DHEN = 0;
     SSP1STATbits.SMP = 0;
-    //SSP1CON1=0x36;
-    //SSP1STAT = 0x00;
-    //SSP1CON2 = 0x01;
-    //PIR1bits.SSP1IF = 0;          // Clear MSSP interrupt request flag
-    //PIE1bits.SSPIE = 1;             // Enable MSSP interrupt enable bit
-    //INTCONbits.GIE_GIEH  = 1;       // GIE/GIEH: Global Interrupt Enable bit
-    //INTCONbits.PEIE_GIEL = 1;       // PEIE/GIEL: Peripheral Interrupt Enable bit
 }
 void remoteInit(){
     ANSELC = 0x00;
@@ -166,6 +159,7 @@ void remoteInit(){
     //erases all pixels from LCD
     LCD_ClearAll();
 }
+
 void scanSensors(){
     char buff[14];
     int length = 0;
@@ -238,7 +232,7 @@ void scanSensors(){
         else{
             flow = i2-i;
         }
-        freq = flow/228.0*10;
+        freq = flow/228.0*10*100;
         length = sprintf(buff, "Flow: %0.2f L", freq);
         for(int j =length; j<14; j++){
             buff[j] = ' ';
@@ -248,7 +242,43 @@ void scanSensors(){
 
 
 }
-
+void LCD(){
+    int length = 0;
+    char buff[14];
+    float freq = 0;
+    length = sprintf(buff, "CO2: %0.2f ppm", CO2/1023.0*400*1.388+3.06); //1023.0*400*1.388+3.06
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(1,0);
+        LCD_WriteStr(buff, 14);
+    length = sprintf(buff, "Sal: %0.1f ppt", salinity/1023.0*400*0.225-17.5);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(2,0);
+        LCD_WriteStr(buff, 14);
+    length = sprintf(buff, "Temp: %0.1f C", (temp/1023.0*400-15)/100*27.75+4);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(3,0);
+        LCD_WriteStr(buff, 14);
+    length = sprintf(buff, "      %0.1f F", ((temp/1023.0*400-15)/100*27.75+4)*1.8+32);//(voltage/1023.0*400-15)/100*27.75*1.8+32
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(4,0);
+        LCD_WriteStr(buff, 14);
+    freq = flow/228.0*10*100;
+        length = sprintf(buff, "Flow: %0.2f L", freq);
+        for(int j =length; j<14; j++){
+            buff[j] = ' ';
+        }
+        LCD_Goto(5,0);
+        LCD_WriteStr(buff, 14);
+    
+}
 //sets pins connected to SRAM data as output
 void out(){
     TRISAbits.RA6 = 0;
@@ -319,6 +349,13 @@ void SRAMWrite(int addr, int data){
     setData(data);
     disable();
 }
+int SRAMRead(int addr){
+    disable();
+    in();
+    readEnable();
+    setAddr(addr);
+    return readData();
+}
 
 //writes all sensor data to SRAM
 void allWrite(int addr){
@@ -374,16 +411,20 @@ void main(void) {
     I2CSlaveInit();
     SSP1ADD =0x70;
     remoteInit();
+    disable();
+    out();
     int scan = 0;
     int count = 0;
-    int buf;
+    int buf=0;
     int addr= 0;
     int send =0;
     int data[8];
+    int length = 0;
+    char buff[14];
     while(1){
         SSP1CON1bits.SSPEN = 0;
         SSP1CON1bits.SSPEN = 1;
-        if(scan){
+        while(scan){
             scanSensors();
             allWrite(addr);
             addr+=8;
@@ -398,7 +439,7 @@ void main(void) {
                 SSP1CON1bits.SSPEN = 0;
                 SSP1CON1bits.SSPEN = 1;
             }
-                while(count<100000 && SSP1STATbits.BF == 0){
+                while(count<10000 && SSP1STATbits.BF == 0){
                     count++;
                 }
                 if(SSP1STATbits.BF == 1){
@@ -469,12 +510,48 @@ void main(void) {
         }
         else if(buf == 0x02){
             int current = addr;
-            for(int i = 0; i<128; i++){
+            for(int i = 0; i<16; i++){
                 current--;
                 if(current < 0){
                     current += 128;
                 }
-                
+                temp = SRAMRead(current);
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                temp += SRAMRead(current)*32;
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                CO2 =SRAMRead(current);
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                CO2 += SRAMRead(current)*32;
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                salinity = SRAMRead(current);
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                salinity += SRAMRead(current)*32;
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                flow = SRAMRead(current);
+                current--;
+                if(current < 0){
+                    current += 128;
+                }
+                flow +=SRAMRead(current)*32;
+                LCD();
             }
             
         }
