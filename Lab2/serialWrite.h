@@ -1,10 +1,13 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 #include <errno.h>
 
-void main(void)
+void serialWrite(char *write_buffer);
+
+void serialWrite(char* write_buffer)
 {
   int fd;
   
@@ -44,13 +47,13 @@ void main(void)
   else
     printf("Baude rate = 9600\n Stop bits = 1\n Parity = none\n");
 
-  char write_buffer[] = "111";
+  // char write_buffer[] = "111";
   int bytes_written = 0;
 
   bytes_written = write(fd, write_buffer, sizeof(write_buffer));
 
   printf("%s written to serial port\n", write_buffer);
-  printf("%d bytes written to serial port\n", bytes_written);
+  printf("%d byte(s) written to serial port\n", bytes_written);
 
   close(fd);
 
