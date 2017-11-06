@@ -25,45 +25,105 @@ int main(int argc, char *argv[])
       printf("Exiting program...\n");
       return 0;
     }
+    //Initiate Scan
     if(commandKey == '1'){
-      printf("Enter the address of the system you'd like to scan in binary:\n");
-      data = (0x0 << 4); //Shift instruction over by 4, so sys addr can be added
-      unsigned char addr;
-      scanf("%c", &addr);
-      data += addr;
-      serialWrite(&data);
+      char addr = '?';
+      while(addr != 'q') {
+	addr = '?';
+	printf("Enter address in decimal, q to quit\n");
+	
+	while(addr < '0' || addr > '7' && addr != 'q') {
+	  scanf("%c", &addr);
+	}
+
+	if(addr == 'q') {
+	  printf("\nBack to main menu\n");
+	}
+	else {
+	  addr -= 0x30; //Convert from ASCII to binary value
+	  printf("\nAddress is %c\n\n", addr);
+	  serialWrite(&addr);
+	}
+      }
     }
+    //Terminate Scan
     else if(commandKey == '2') {
-      printf("Enter the address of the system you'd like to terminate in binary:\n");
-      data = (0x1 << 4);
-      unsigned char addr;
-      scanf("%c", &addr);
-      data += addr;
-      serialWrite(&data);
+      char addr = '?';
+      data = 0x10;
+      while(addr != 'q') {
+	addr = '?';
+	data = 0x10;
+	printf("Enter address in decimal, q to quit\n");
+	
+	while(addr < '0' || addr > '7' && addr != 'q') {
+	  scanf("%c", &addr);
+	}
+
+	if(addr == 'q') {
+	  printf("\nBack to main menu\n");
+	}
+	else {
+	  addr -= 0x30; //Convert from ASCII to binary value
+	  data += addr;
+	  printf("\nData is %x\n", data);
+	  serialWrite(&data);
+	}
+      }
     }
+    //Grab reading from address
     else if(commandKey == '3') {
-      printf("Enter the address of the system you'd like to read in binary:\n");
-      data = (0x2 << 4);
-      unsigned char addr;
-      scanf("%c", &addr);
-      data += addr;
-      serialWrite(&data);
-      //add some delay here
-      serialRead();
-      // Process data into floats and print
+      char addr = '?';
+      data = 0x20;
+      while(addr != 'q') {
+	addr = '?';
+	data = 0x20;
+	printf("Enter address in decimal, q to quit\n");
+	
+	while(addr < '0' || addr > '7' && addr != 'q') {
+	  scanf("%c", &addr);
+	}
+
+	if(addr == 'q') {
+	  printf("\nBack to main menu\n");
+	}
+	else {
+	  addr -= 0x30; //Convert from ASCII to binary value
+	  data += addr;
+	  printf("Data being sent is %x\n\n", data);
+	  serialWrite(&data);
+	  //configure delay
+	  serialRead();
+	}
+      }
     }
     else if(commandKey == '4') {
-      printf("Enter the address of the system you'd like to read in binary:\n");
-      data = (0x3 << 4);
-      unsigned char addr;
-      scanf("%c", &addr);
-      data += addr;
-      serialWrite(&data);
-      //delay
-      serialRead();
-      //Process data into floats and print
+      char addr = '?';
+      data = 0x30;
+      while(addr != 'q') {
+	addr = '?';
+	data = 0x30;
+	printf("Enter address in decimal, q to quit\n");
+	
+	while(addr < '0' || addr > '7' && addr != 'q') {
+	  scanf("%c", &addr);
+	}
+
+	if(addr == 'q') {
+	  printf("\nBack to main menu\n");
+	}
+	else {
+	  addr -= 0x30; //Convert from ASCII to binary value
+	  data += addr;
+	  printf("Data being sent is %x\n\n", data);
+	  //MAY NEED TO LOOP THIS 16 TIMES
+	  serialWrite(&data);
+	  //configure delay
+	  serialRead();
+	}
+      }
     }
   }
+  return 0;
 }
 
 

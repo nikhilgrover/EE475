@@ -16,7 +16,7 @@ struct packet
 
 uint32_t ConvertToUInt32(char bytes[], char index);
 struct packet ParsePacket(char bytes[]);
-void serialRead(void);
+static void serialRead(void);
 
 uint32_t ConvertToUInt32(char bytes[], char index)
 {
@@ -44,7 +44,7 @@ void serialRead(void)
   if(fd == -1)
     printf("\nError in opening serial port \n");
   else
-    // printf("\nSerial port opened \n");
+    printf("\nSerial port opened \n");
 
   struct termios SerialPortSettings;
   tcgetattr(fd, &SerialPortSettings);
