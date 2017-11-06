@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 	addr = '?';
 	printf("Enter address in decimal, q to quit\n");
 	
-	while(addr < '0' || addr > '7' && addr != 'q') {
+	while(addr < '0' || addr > '8' && addr != 'q') {
 	  scanf("%c", &addr);
 	}
 
@@ -64,8 +64,8 @@ int main(int argc, char *argv[])
 	}
 	else {
 	  addr -= 0x30; //Convert from ASCII to binary value
-	  data += addr;
-	  printf("\nData is %x\n", data);
+	  data |= addr;
+	  printf("\nData is 0x%x\n", data);
 	  serialWrite(&data);
 	}
       }
@@ -88,10 +88,10 @@ int main(int argc, char *argv[])
 	}
 	else {
 	  addr -= 0x30; //Convert from ASCII to binary value
-	  data += addr;
+	  data |= addr;
 	  printf("Data being sent is %x\n\n", data);
 	  serialWrite(&data);
-	  //configure delay
+	  usleep(500000);
 	  serialRead();
 	}
       }
@@ -113,11 +113,11 @@ int main(int argc, char *argv[])
 	}
 	else {
 	  addr -= 0x30; //Convert from ASCII to binary value
-	  data += addr;
+	  data |= addr;
 	  printf("Data being sent is %x\n\n", data);
 	  //MAY NEED TO LOOP THIS 16 TIMES
 	  serialWrite(&data);
-	  //configure delay
+	  usleep(500000);
 	  serialRead();
 	}
       }

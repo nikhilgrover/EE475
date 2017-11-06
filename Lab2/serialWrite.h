@@ -50,9 +50,9 @@ void serialWrite(char* write_buffer)
   // char write_buffer[] = "111";
   int bytes_written = 0;
 
-  bytes_written = write(fd, *write_buffer, sizeof(write_buffer));
+  bytes_written = write(fd, write_buffer, 1);
 
-  printf("%x written to serial port\n", *write_buffer);
+  //printf("%x written to serial port\n", write_buffer);
   printf("%d byte(s) written to serial port\n", bytes_written);
 
   close(fd);
