@@ -105,10 +105,10 @@ void I2CMaster(){
     }
     PIR1bits.SSPIF = 0;
     SSP1CON2bits.PEN = 1;
+    
 }
-void readI2C(void){
-     SSP1ADD =0x0F;
-    int ack = 0;
+void I2Cinit(){
+    SSP1ADD =0x0F;
     ANSELCbits.ANSC3 = 0;
     ANSELCbits.ANSC4 = 0;
     TRISCbits.RC3 = 1;
@@ -119,20 +119,64 @@ void readI2C(void){
     SSP1CON1bits.SSPM = 0x8;
     SSP1CON2bits.RCEN = 0;
     SSP1CON2bits.SEN = 1;
+}
+int readI2C(int addr){
+    int ack = 0;
+    int buf = 0;
     while(PIR1bits.SSPIF == 0){
     }
     PIR1bits.SSPIF = 0;
-    SSP1BUF = 0x71;
+    SSP1BUF = addr+1;
     while(PIR1bits.SSPIF == 0){
         
     }
     PIR1bits.SSP1IF = 0;
     SSP1CON2bits.RCEN = 1;
+    while(PIR1bits.SSPIF == 0){
+        
+    }
+    buf = SSP1BUF;
+    while(SSP1STATbits.BF == 1){
+        
+    }
+    SSP1CON2bits.ACKDT = 1;
+    SSP1CON2bits.ACKEN = 1;
+    PIR1bits.SSPIF = 0;
+    SSP1CON2bits.PEN = 1;
+    SSP1CON1bits.SSPEN = 0;
+    SSP1CON1bits.SSPEN = 1;
+    __delay_us(50);
+    return buf;
     
 }
+void writeI2C(int addr){
+    int ack = 0;
+    while(PIR1bits.SSPIF == 0){
+    }
+    PIR1bits.SSPIF = 0;
+    SSP1BUF = addr;
+    while(PIR1bits.SSPIF == 0){
+        
+    }
+    PIR1bits.SSP1IF = 0;
+    __delay_us(100);
+    SSP1BUF = 0xAA;
+    if(SSP1CON2bits.ACKSTAT ==0){
+        
+    }
+    while(PIR1bits.SSPIF == 0){
+        
+    }
+    PIR1bits.SSPIF = 0;
+    SSP1CON2bits.PEN = 1;
+}
 void main(void) {
-    //I2CMaster();
+   // I2CMaster();
     readI2C();
+     SSP1CON1bits.SSPEN = 0;
+      SSP1CON1bits.SSPEN = 1;
+      __delay_us(50);
+     readI2C();
     while(1){
         
     }
