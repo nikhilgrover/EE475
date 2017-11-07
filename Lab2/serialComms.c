@@ -9,6 +9,14 @@
 #include "serialRead.h"
 #include "serialWrite.h"
 
+/*
+* Author: Nikhil Grover
+*
+* serialComms is the primary interface between the local system 
+* and the PC. It makes calls to serialRead and serialWrite as 
+* necessary to send/receive data packets to/from the local system. 
+*/
+
 int main(int argc, char *argv[])
 {
   char commandKey = '?';
