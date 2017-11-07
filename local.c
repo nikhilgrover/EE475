@@ -150,7 +150,7 @@ uint8_t writeI2C(int addr, char data)
     PIR1bits.SSPIF = 0;
     
     //sets first byte (address))
-    SSP1BUF = 0x70;//addr;
+    SSP1BUF = addr;
     //waits for first byte transmission
     while(PIR1bits.SSPIF == 0){ }
     
@@ -268,7 +268,15 @@ void Read1x(char addr)
     char buffer[8];
 
     //send Readx1 command and wait for ack
-    writeI2C(addr,0x01);
+    while(writeI2C(addr,0x01))
+    {
+        __delay_ms(10);
+    }
+    __delay_ms(10);
+    while(writeI2C(addr,0x0a))
+    {
+        __delay_ms(10);
+    }
     
     __delay_ms(300);
     for(int i=0;i<8;i++)
@@ -295,11 +303,42 @@ void Read16x(char addr)
     //I2C command(s) to request data from sensor (addr) for 16 readings
     char buffer[128];
 
-    PORTB |= 1;
+
     //send Readx16 command and wait for ack
-    writeI2C(addr,0x02);
-    PORTB &= ~1;
+    while(writeI2C(addr,0x02))
+    {
+        __delay_ms(10);
+    }
+    
+   
     __delay_ms(500);
+    int index = 0;
+    
+    for(int i=0;i<16;i++)
+    {
+        PORTB |= 1;
+        while(writeI2C(addr,0x0a))
+        {
+            __delay_ms(10);
+        }
+        
+        PORTB &= ~1;
+        //__delay_ms(10);
+        //readI2C(addr);
+        //__delay_ms(10);
+        for(int j=0;j<8;j++)
+        {
+            __delay_ms(10);
+            buffer[index] = readI2C(addr);
+            index++;
+        }
+        struct packet p;
+        ConvertRawToMeas(&p, buffer,i*8);
+        
+        SendPacket(&p);
+    }
+    
+    
     //for(int i=0;i<8;i++)
     //{
     //    signed int data;
@@ -308,17 +347,12 @@ void Read16x(char addr)
     //    __delay_ms(500);
     //}
 
-    struct packet p;
-    p.Temperature = 100;
-    p.CO2 = 200;
-    p.Salinity = 300;
-    p.FlowRate = 400;
-    
+
     //SendPacket(&p);
-    for(int i=0;i<16;i++)
-    {
-        SendPacket(&p);
-    }
+    //for(int i=0;i<16;i++)
+    //{
+    //   SendPacket(&p);
+    //}
     NextState = idle;
 }
 
@@ -443,3 +477,4 @@ void main(void)
         LocalSystemStateMachine();
     }
 }
+
