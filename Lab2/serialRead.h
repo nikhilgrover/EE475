@@ -14,13 +14,14 @@ struct packet
   float FlowRate;
 };
 
-uint32_t ConvertToUInt32(char bytes[], char index);
+float ConvertToUInt32(unsigned char bytes[], char index);
 struct packet ParsePacket(char bytes[]);
 static void serialRead(void);
 
-uint32_t ConvertToUInt32(char bytes[], char index)
+float ConvertToUInt32(unsigned char bytes[], char index)
 {
-  return bytes[index] | (bytes[index + 1] << 8) | (bytes[index + 2] << 16) | (bytes[index + 3] << 24);
+  uint32_t value = (uint32_t)(bytes[index] | (bytes[index + 1] << 8) | (bytes[index + 2] << 16) | (bytes[index + 3] << 24));
+  return (float)value / 100;
 }
 
 struct packet ParsePacket(char bytes[])
@@ -68,8 +69,8 @@ void serialRead(void)
   SerialPortSettings.c_oflag &= ~OPOST;
 
   // Set time outs
-  SerialPortSettings.c_cc[VMIN] = 0; // Read this many characters
-  SerialPortSettings.c_cc[VTIME] = 10; // Wait indefinitely 
+  SerialPortSettings.c_cc[VMIN] = 16; // Read this many characters
+  SerialPortSettings.c_cc[VTIME] = 0; // Wait indefinitely 
 
   if((tcsetattr(fd, TCSANOW, &SerialPortSettings)) != 0)
     printf("ERROR in setting attributes\n"); 
@@ -79,7 +80,7 @@ void serialRead(void)
   // Read data from serial port
 
   tcflush(fd, TCIFLUSH);
-  char read_buffer[16];
+  char read_buffer[16] = {0};
   int bytes_read = 0;
   int i = 0;
 

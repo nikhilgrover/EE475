@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	  data |= addr;
 	  printf("Data being sent is %x\n\n", data);
 	  serialWrite(&data);
-	  usleep(500000);
+	  usleep(3000000);
 	  serialRead();
 	}
       }
@@ -115,10 +115,11 @@ int main(int argc, char *argv[])
 	  addr -= 0x30; //Convert from ASCII to binary value
 	  data |= addr;
 	  printf("Data being sent is %x\n\n", data);
-	  //MAY NEED TO LOOP THIS 16 TIMES
 	  serialWrite(&data);
+	  for(int i = 0; i < 16; i++) {
 	  usleep(500000);
 	  serialRead();
+	  }
 	}
       }
     }
