@@ -1,0 +1,11 @@
+c:\users\schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\bin\Debug\TeensyDebugger.exe.config
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\bin\Debug\TeensyDebugger.exe
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\bin\Debug\TeensyDebugger.pdb
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.csprojResolveAssemblyReference.cache
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.Properties.Resources.resources
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.csproj.GenerateResource.Cache
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.exe
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.pdb
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.Form1.resources
+C:\Users\Schuyler\documents\visual studio 2013\Projects\TeensyDebugger\TeensyDebugger\bin\Debug\FastColoredTextBox.dll
+C:\Users\Schuyler\Documents\Visual Studio 2013\Projects\TeensyDebugger\TeensyDebugger\obj\Debug\TeensyDebugger.StackControl.resources
