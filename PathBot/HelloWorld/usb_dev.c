@@ -852,15 +852,15 @@ void usb_isr(void)
 	  //                 " : : "r" (&sp0) : "r7","r8");
 
 
-		  asm volatile ("tst lr, #0x4 \n \
-					 ite EQ \n \
-					 mrseq r0, MSP \n \
-					 mrsne r0, PSP \n \
-					 bl StackAccess" : : : "r0");
+		  // asm volatile ("tst lr, #0x4 \n \
+				// 	 ite EQ \n \
+				// 	 mrseq r0, MSP \n \
+				// 	 mrsne r0, PSP \n \
+				// 	 bl StackAccess" : : : "r0");
 	//uint32_t lr = (uint32_t)__builtin_return_address(0);
 	uint8_t status, stat, t;
 
-	char received = 0;
+	//char received = 0;
 
 	//serial_print("isr");
 	//status = USB0_ISTAT;
@@ -1004,7 +1004,7 @@ void usb_isr(void)
 					}
 				}
 			} else { // receive
-				received = 1;
+				//received = 1;
 				packet->len = b->desc >> 16;
 				if (packet->len > 0) {
 					packet->index = 0;
@@ -1111,10 +1111,10 @@ void usb_isr(void)
 		//serial_print("sleep\n");
 		USB0_ISTAT = USB_ISTAT_SLEEP;
 	}
-	if(received)
-	{
-		SendData();
-	}
+	// if(received)
+	// {
+	// 	SendData();
+	// }
 }
 
 
