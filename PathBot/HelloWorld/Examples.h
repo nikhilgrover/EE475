@@ -1,3 +1,6 @@
+#include <Wire.h>
+
+
 void Examples_TestGPIO()
 {
 	const uint32_t mask = 1<<17;
@@ -31,4 +34,14 @@ void Examples_TestGPIO()
 		counter++;
 
 	}
+}
+
+void Examples_TestI2C()
+{
+	Wire.setSDA(18);
+	Wire.setSCL(19);
+	Wire.begin();
+	Wire.beginTransmission(0x38);
+	Wire.write(0x0f);
+	Wire.endTransmission();
 }
